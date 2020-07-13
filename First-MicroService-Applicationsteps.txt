@@ -1,0 +1,209 @@
+Spring Boot - Micro Services First Application steps
+=======================================================
+First Part:Eureka-Server
+-----------------------
+1.create a spring boot starter project along with following dependecies
+
+->eureka 
+
+2.add the following properties(application.properties)
+eureka.instance.hostname=localhost
+eureka.client.registerWithEureka=false
+eureka.client.fetchRegistry=false
+
+ server.port=7777
+
+
+3.add the @EnableEurekaServer on top of main class
+
+package com.chandra;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
+
+@SpringBootApplication
+@EnableEurekaServer
+public class SpringEurekaServerApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringEurekaServerApplication.class, args);
+	}
+
+}
+
+
+4.run the above program after open and give the following url
+
+http://localhost:7777
+
+2.Hello-Service
+----------------
+1.create another maven project using following dependecies
+
+<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+		</dependency>
+
+2.Create a HelloObject (src/main/java)
+
+package com.chandra;
+
+public class HelloObject {
+
+	private String message;
+
+	public String getMessage() {
+		return message;
+	}
+
+	public void setMessage(String message) {
+		this.message = message;
+	}
+
+}
+
+3.create controller class(src/main/java)
+
+package com.chandra;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class HelloController {
+	
+	private AtomicLong counter = new AtomicLong();
+	
+	@GetMapping("/hello")
+	public HelloObject getHelloWorldObject()
+	{
+		HelloObject hello = new HelloObject();
+		hello.setMessage("Hi Microserices...Welcome to Client");
+		return hello;
+	}
+
+}
+
+4.add the @ EnableEurekaServer annotation into the main class
+package com.chandra;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
+
+@SpringBootApplication
+@EnableEurekaClient
+public class HelloServiceApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(HelloServiceApplication.class, args);
+	}
+
+}
+
+5. add the following properties in to application.properties
+
+eureka.client.serviceUrl.defaultZone=http://localhost:7777/eureka/
+spring.application.name=hello-service
+server.port=8081
+
+6.start the application by using main method class(HelloServiceApplication.java)
+
+after open the eureka server and refresh and check name will be display
+
+3.Hello-Web-Client
+------------------
+1.create another springboot starter  project using following dependecies
+<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+		</dependency>
+
+2.add the following properties in to application.properties
+
+eureka.client.serviceUrl.defaultZone=http://localhost:7777/eureka/
+spring.application.name=hello-web-client
+server.port=8082
+
+
+3. add the @EnableEurekaClient client on top of the main class
+
+package com.chandra;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+
+@SpringBootApplication
+@EnableDiscoveryClient
+public class HelloWebClientApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(HelloWebClientApplication.class, args);
+	}
+
+}
+
+4.create a controller class (src/main/java)
+
+package com.chandra;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.client.RestTemplate;
+
+@Controller
+public class HelloWebClientController {
+	@Autowired
+	private DiscoveryClient discoveryClient;
+	@GetMapping("/")
+	public String handleRequest(Model model)
+	{
+		
+		List<ServiceInstance> instance = discoveryClient.getInstances("hello-service");
+		if(instance!=null && instance.size()>0)
+		{
+			ServiceInstance serviceInstance = instance.get(0);
+			String url = serviceInstance.getUri().toString();
+		
+			url = url+"/hello";
+			
+			RestTemplate restTemplate = new RestTemplate();
+			HelloObject hello = restTemplate.getForObject(url,HelloObject.class);
+			model.addAttribute("msg",hello.getMessage());
+			model.addAttribute("Time", LocalDateTime.now());
+			
+		}
+		return "hello-page";
+	}
+
+}
+
+step5:run the main method class(HelloWebClientApplication.java)
+
+after open the browser type url : http://localhost:8082/
+
+
